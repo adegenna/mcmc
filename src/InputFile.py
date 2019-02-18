@@ -39,18 +39,22 @@ class InputFile():
     
     def __init__(self,args=[]):
         try:
-            inputfilename         = args.inputfilename_mcmc
-            inputfilestream       = open(inputfilename)
-            self.projdir          = inputfilestream.readline().strip().split('= ')[1];
-            self.datadir          = inputfilestream.readline().strip().split('= ')[1];
-            self.loaddir          = inputfilestream.readline().strip().split('= ')[1];
-            self.outdir           = inputfilestream.readline().strip().split('= ')[1];
-            self.initialstatepath = inputfilestream.readline().strip().split('= ')[1];
-            self.epsilon          = float(inputfilestream.readline().strip().split('= ')[1])
-            self.dt               = float(inputfilestream.readline().strip().split('= ')[1])
-            self.t_steps          = int(inputfilestream.readline().strip().split('= ')[1])
-            self.saveperiod       = int(inputfilestream.readline().strip().split('= ')[1])
-            self.eyre_a           = int(inputfilestream.readline().strip().split('= ')[1]);
+            inputfilename           = args.inputfilename_mcmc
+            inputfilestream         = open(inputfilename)
+            self.projdir            = inputfilestream.readline().strip().split('= ')[1];
+            self.datadir            = inputfilestream.readline().strip().split('= ')[1];
+            self.loaddir            = inputfilestream.readline().strip().split('= ')[1];
+            self.outdir             = inputfilestream.readline().strip().split('= ')[1];
+            self.truestatepath      = inputfilestream.readline().strip().split('= ')[1];
+            initial_parameters      = inputfilestream.readline().strip().split('= ')[1];
+            self.initial_parameters = np.array( initial_parameters.split(',') , dtype='float' )
+            self.posterior_samples  = int(inputfilestream.readline().strip().split('= ')[1])
+            self.sigma_likelihood   = float(inputfilestream.readline().strip().split('= ')[1])
+            self.sigma_step         = float(inputfilestream.readline().strip().split('= ')[1])
+            prior_mu                = inputfilestream.readline().strip().split('= ')[1]
+            self.prior_mu           = np.array( prior_mu.split(',') , dtype='float' )
+            prior_sigma             = inputfilestream.readline().strip().split('= ')[1]
+            self.prior_sigma        = np.array( prior_sigma.split(',') , dtype='float' )
             inputfilestream.close();
         except:
             print("Using no input file (blank initialization).")

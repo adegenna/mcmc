@@ -8,11 +8,23 @@ class MCMC():
     Class for MCMC sampling.
     """
     def __init__(self,inputs):
-        self.inputs     = inputs
-        self.P          = self.inputs.num_params
-        self.param_iter = 0
-        self.params     = []
-        self.posterior  = []
+        self.initial_parameters = inputs.initial_parameters
+        self.P                  = len(self.initial_parameters)
+        self.sigma_likelihood   = inputs.sigma_likelihood
+        self.sigma_step         = inputs.sigma_step
+        self.posterior_samples  = inputs.posterior_samples
+        self.prior_mu           = inputs.prior_mu
+        self.prior_sigma        = inputs.prior_sigma
+        self.param_iter         = 0
+        self.params             = []
+        self.posterior          = []
+        self.outdir             = inputs.outdir
+        
+    def set_true_state(self,U_truth):
+        """
+        Method to set the true state.
+        """
+        self.U_truth = U_truth
         
     def set_forward_model(self,physics):
         """
@@ -52,33 +64,85 @@ class MCMC():
         """
         Method to compute likelihood function with Gaussian assumption.
         """
-        return np.exp( -0.5*(discrepancy)/(self.sigma_likelihood**2) )
+        return np.exp( -0.5*(discrepancy)**2/(self.sigma_likelihood**2) )
 
-    def compute_posterior_sample(self,param,likelihood):
+    def evaluate_gaussian_prior(self,x):
         """
-        Method to compute a sample of the posterior.
+        Method to evaluate Gaussian prior at a point x.
         """
-        p0  = self.evaluate_prior(param)
-        return likelihood * p0
+        eval_x = 1.0
+        for i in range(self.P):
+            eval_x *= np.exp( -0.5*(x-self.prior_mu[i])**2/(self.prior_sigma[i]**2) )
+        eval_x /= np.sqrt( (2*np.pi)**self.P * np.prod(self.prior_sigma) )
+        return eval_x
+        
+    def compute_posterior_sample(self,param,param_m1,likelihood,likelihood_m1):
+        """
+        Method to compute a sample of the posterior:
+        alpha = L*P / L_m1*P_m1
+        """
+        p0           = self.evaluate_gaussian_prior(param)
+        p0_m1        = self.evaluate_gaussian_prior(param_m1)
+        posterior    = likelihood * p0
+        posterior_m1 = likelihood_m1 * p0_m1 
+        alpha        = posterior/posterior_m1 
+        return posterior,alpha
 
     def append_posterior_sample(self,posterior):
         """
         Method to append a sample to the posterior record.
         """
         self.posterior = np.hstack( [self.posterior,posterior] )
-        
+
+    def decide_acceptance(self,alpha):
+        dice = np.random.uniform(0,1)
+        return (alpha > dice)
+
+    def delete_current_params(self):
+        self.params       = self.params[0:-1]
+        self.param_iter -= 1
+    
     def calculate_posterior(self):
         """
         Main method for sampling from the posterior.
         """
         self.initialize_parameters(self.initial_parameters)
-        for i in range(self.inputs.posterior_samples):
+        for i in range(self.posterior_samples):
             if (i != 0):
                 self.random_parameter_step()
-            self.physics.solve()
-            U_model     = self.physics.get_state_history()
-            discrepancy = self.compute_model_data_discrepancy_Tfinal(Umodel)
+                self.forward_model.reset_state()
+                params_im1 = self.params[self.param_iter]
+            params_i    = self.params[self.param_iter]
+            print("Computing sample %d " %(i+1) + ": " + str(params_i))
+            self.forward_model.set_parameters(params_i)
+            self.forward_model.reset()
+            self.forward_model.solve()
+            U_model     = self.forward_model.get_state_history()
+            # plt.contourf( self.forward_model.state.state1D_to_2D(U_model[-1]) )
+            # plt.show()
+            discrepancy = self.compute_model_data_discrepancy_Tfinal(U_model)
             likelihood  = self.compute_likelihood_gaussian(discrepancy)
-            posterior   = self.compute_posterior_sample(likelihood)
-            self.append_posterior_sample(posterior)
-            
+            if (i == 0):
+                params_im1     = params_i
+                likelihood_im1 = likelihood
+            posterior,alpha = self.compute_posterior_sample(params_i,params_im1,likelihood,likelihood_im1)
+            bool_accept     = self.decide_acceptance(alpha)
+            if bool_accept:
+                print("Sample %d likelihood/posterior/alpha: %.2f/%.2f/%.2f" %((i+1),likelihood,posterior,alpha) + " ACCEPT")
+                self.append_posterior_sample(posterior)
+            else:
+                print("Sample %d likelihood/posterior/alpha: %.2f/%.2f/%.2f" %((i+1),likelihood,posterior,alpha) + " REJECT")
+                self.delete_current_params()
+            params_im1     = params_i
+            likelihood_im1 = likelihood
+
+    def write(self,outfile):
+        """
+        Writes to outdir/ the results of the sampling, ie. (parameter_i , posterior_i).
+        """
+        f = open(outfile,'w+')
+        for i in range(self.params.shape[0]):
+            line = str(self.params[i])[1:-1] + " , " + str(self.posterior[i])
+            f.write(line)
+            f.write('\n')            
+        f.close()

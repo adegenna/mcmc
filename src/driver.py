@@ -44,12 +44,14 @@ def main():
     physics    = ch.CahnHilliardPhysics.CahnHilliardPhysics(inputs_solver, state)
 
     # MCMC sampler setup
+    C_truth    = np.genfromtxt(inputs_mcmc.truestatepath)[-1]
     mcmc       = MCMC(inputs_mcmc)
+    mcmc.set_true_state(C_truth)
     mcmc.set_forward_model(physics)
     mcmc.calculate_posterior()
     
     # Output
-    mcmc.write(inputs.outdir + "state.csv" , tskip=inputs.saveperiod)
+    mcmc.write(inputs_mcmc.outdir + "mcmc.out")
     
 if __name__ == '__main__':
     main()
