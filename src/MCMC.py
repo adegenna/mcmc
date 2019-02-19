@@ -128,13 +128,13 @@ class MCMC():
             posterior,alpha = self.compute_posterior_sample(params_i,params_im1,likelihood,likelihood_im1)
             bool_accept     = self.decide_acceptance(alpha)
             if bool_accept:
-                print("Sample %d likelihood/posterior/alpha: %.2f/%.2f/%.2f" %((i+1),likelihood,posterior,alpha) + " ACCEPT")
+                print("Sample %d discrepancy/likelihood/posterior/alpha: %.2f/%.2f/%.2f/%.2f" %((i+1),discrepancy,likelihood,posterior,alpha) + " ACCEPT")
                 self.append_posterior_sample(posterior)
+                params_im1     = params_i
+                likelihood_im1 = likelihood
             else:
-                print("Sample %d likelihood/posterior/alpha: %.2f/%.2f/%.2f" %((i+1),likelihood,posterior,alpha) + " REJECT")
+                print("Sample %d discrepancy/likelihood/posterior/alpha: %.2f/%.2f/%.2f/%.2f" %((i+1),discrepancy,likelihood,posterior,alpha) + " REJECT")
                 self.delete_current_params()
-            params_im1     = params_i
-            likelihood_im1 = likelihood
 
     def write(self,outfile):
         """
