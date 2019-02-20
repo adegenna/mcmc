@@ -34,17 +34,17 @@ def main():
                         help='Filename of the input file for the forward solver')
     args          = parser.parse_args()
     inputs_mcmc   = InputFile(args)
-    inputs_solver = ch.InputFile.InputFile(args)
+    inputs_solver = ch.src.InputFile.InputFile(args)
     inputs_mcmc.printInputs()
     inputs_solver.printInputs()
 
     # Physics setup
     C0         = np.genfromtxt(inputs_solver.initialstatepath , delimiter=',')
-    state      = ch.CahnHilliardState.CahnHilliardState(C0)
-    physics    = ch.CahnHilliardPhysics.CahnHilliardPhysics(inputs_solver, state)
+    state      = ch.src.CahnHilliardState.CahnHilliardState(C0)
+    physics    = ch.src.CahnHilliardPhysics.CahnHilliardPhysics(inputs_solver, state)
 
     # MCMC sampler setup
-    C_truth    = np.genfromtxt(inputs_mcmc.truestatepath)[-1]
+    C_truth    = np.genfromtxt(inputs_mcmc.truestatepath)
     mcmc       = MCMC(inputs_mcmc)
     mcmc.set_true_state(C_truth)
     mcmc.set_forward_model(physics)

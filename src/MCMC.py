@@ -53,11 +53,10 @@ class MCMC():
         pnew = p0 + self.sigma_step * np.random.normal(0,1,(p0.shape))
         self.append_parameters(pnew)
 
-    def compute_model_data_discrepancy_Tfinal(self,Umodel):
+    def compute_model_data_discrepancy_Tfinal(self,Umodel_tf):
         """
         Method to compute discrepancy function between data and model.
         """
-        Umodel_tf = Umodel[-1]
         return np.linalg.norm( self.U_truth - Umodel_tf )
 
     def compute_likelihood_gaussian(self,discrepancy):
@@ -81,11 +80,12 @@ class MCMC():
         Method to compute a sample of the posterior:
         alpha = L*P / L_m1*P_m1
         """
+        tol_zero     = 1e-8
         p0           = self.evaluate_gaussian_prior(param)
         p0_m1        = self.evaluate_gaussian_prior(param_m1)
         posterior    = likelihood * p0
-        posterior_m1 = likelihood_m1 * p0_m1 
-        alpha        = posterior/posterior_m1 
+        posterior_m1 = likelihood_m1 * p0_m1
+        alpha        = posterior/(posterior_m1 + tol_zero)
         return posterior,alpha
 
     def append_posterior_sample(self,posterior):
@@ -111,15 +111,13 @@ class MCMC():
             if (i != 0):
                 self.random_parameter_step()
                 self.forward_model.reset_state()
-                params_im1 = self.params[self.param_iter]
             params_i    = self.params[self.param_iter]
             print("Computing sample %d " %(i+1) + ": " + str(params_i))
             self.forward_model.set_parameters(params_i)
             self.forward_model.reset()
             self.forward_model.solve()
-            U_model     = self.forward_model.get_state_history()
-            # plt.contourf( self.forward_model.state.state1D_to_2D(U_model[-1]) )
-            # plt.show()
+            U_model     = self.forward_model.get_current_state()
+            U_model     = self.forward_model.state.state2D_to_1D( U_model )
             discrepancy = self.compute_model_data_discrepancy_Tfinal(U_model)
             likelihood  = self.compute_likelihood_gaussian(discrepancy)
             if (i == 0):
@@ -130,8 +128,8 @@ class MCMC():
             if bool_accept:
                 print("Sample %d discrepancy/likelihood/posterior/alpha: %.2f/%.2f/%.2f/%.2f" %((i+1),discrepancy,likelihood,posterior,alpha) + " ACCEPT")
                 self.append_posterior_sample(posterior)
-                params_im1     = params_i
-                likelihood_im1 = likelihood
+                params_im1     = params_i.copy()
+                likelihood_im1 = likelihood.copy()
             else:
                 print("Sample %d discrepancy/likelihood/posterior/alpha: %.2f/%.2f/%.2f/%.2f" %((i+1),discrepancy,likelihood,posterior,alpha) + " REJECT")
                 self.delete_current_params()
