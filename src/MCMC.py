@@ -80,7 +80,7 @@ class MCMC():
         Method to compute a sample of the posterior:
         alpha = L*P / L_m1*P_m1
         """
-        tol_zero     = 1e-8
+        tol_zero     = 1e-2
         p0           = self.evaluate_gaussian_prior(param)
         p0_m1        = self.evaluate_gaussian_prior(param_m1)
         posterior    = likelihood * p0
